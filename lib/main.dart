@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/setup_screen.dart';
 import 'services/app_services.dart';
 import 'services/dictionary_repository.dart';
 import 'services/language_detector.dart';
@@ -81,7 +82,7 @@ class _BootstrapState extends State<_Bootstrap> {
           translation: TranslationService(),
           speech: SpeechService(),
           detector: LanguageDetector(),
-          child: const HomeScreen(),
+          child: const SetupGate(child: HomeScreen()),
         );
       },
     );
