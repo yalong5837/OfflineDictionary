@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/app_language.dart';
@@ -34,36 +36,53 @@ Future<bool> ensureModels(
   );
   if (confirmed != true || !context.mounted) return false;
 
+  var cancelled = false;
   showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (context) => const PopScope(
+    builder: (dialogContext) => PopScope(
       canPop: false,
       child: AlertDialog(
-        content: Row(
+        content: const Row(
           children: [
             CircularProgressIndicator(),
             SizedBox(width: 20),
             Expanded(child: Text('正在下载语言包…')),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              cancelled = true;
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('取消'),
+          ),
+        ],
       ),
     ),
   );
-  var ok = true;
+  String? error;
   try {
     for (final language in missing) {
-      ok = ok && await translation.download(language);
+      if (cancelled) break;
+      if (!await translation.download(language)) {
+        error = '下载失败，请检查网络后重试';
+        break;
+      }
     }
+  } on TimeoutException {
+    error = '下载超时，请检查网络后重试';
   } catch (_) {
-    ok = false;
+    error = '下载失败，请检查网络后重试';
   }
+  if (cancelled) return false;
   if (context.mounted) {
     Navigator.of(context, rootNavigator: true).pop();
-    if (!ok) {
+    if (error != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('下载失败，请检查网络后重试')));
+          .showSnackBar(SnackBar(content: Text(error)));
     }
   }
-  return ok;
+  return error == null;
 }

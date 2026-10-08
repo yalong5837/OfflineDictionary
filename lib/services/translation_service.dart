@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 
 import '../models/app_language.dart';
@@ -23,8 +25,31 @@ class TranslationService {
     return missing;
   }
 
-  Future<bool> download(AppLanguage language, {bool wifiOnly = false}) =>
-      _models.downloadModel(language.code, isWifiRequired: wifiOnly);
+  /// Downloads the model for [language]. Returns false if the download
+  /// failed, and throws [TimeoutException] if it did not finish in [timeout].
+  ///
+  /// The download goes through a translator rather than the model manager:
+  /// on iOS the model manager downloads in a background session, which can
+  /// stall without ever reporting success or failure (notably in the
+  /// simulator). A translator downloads its models in the foreground.
+  Future<bool> download(
+    AppLanguage language, {
+    Duration timeout = const Duration(minutes: 5),
+  }) async {
+    if (await isDownloaded(language)) return true;
+    // Every translation needs English, so pairing with it adds nothing extra.
+    final partner = language == AppLanguage.en
+        ? AppLanguage.zh
+        : AppLanguage.en;
+    try {
+      await translate('ok', language, partner).timeout(timeout);
+    } on TimeoutException {
+      rethrow;
+    } catch (_) {
+      return false;
+    }
+    return isDownloaded(language);
+  }
 
   Future<bool> delete(AppLanguage language) async {
     await _closeTranslatorsUsing(language);
